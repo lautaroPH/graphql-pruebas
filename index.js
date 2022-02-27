@@ -1,26 +1,26 @@
-import { ApolloServer, gql, UserInputError } from 'apollo-server';
-import { v1 } from 'uuid';
+import { ApolloServer, gql, UserInputError } from "apollo-server";
+import { v1 } from "uuid";
 
 const persons = [
   {
-    name: 'jaja',
-    phone: '04343-43141',
-    street: 'berisso',
-    city: 'la plata',
-    id: '3dsadmn3d3ldmasdd3',
+    name: "jaja",
+    phone: "04343-43141",
+    street: "berisso",
+    city: "la plata",
+    id: "3dsadmn3d3ldmasdd3",
   },
   {
-    name: 'sadas',
-    phone: '04312343-43141',
-    street: 'sawd',
-    city: 'bersso',
-    id: '3dsa123dmn3341d3ldmasasddd3',
+    name: "sadas",
+    phone: "04312343-43141",
+    street: "sawd",
+    city: "bersso",
+    id: "3dsa123dmn3341d3ldmasasddd3",
   },
   {
-    name: 'midu',
-    street: 'dsbbbv',
-    city: 'la sad',
-    id: '3dsa335345dm12315425n3d3ldmasdd3',
+    name: "midu",
+    street: "dsbbbv",
+    city: "la sad",
+    id: "3dsa335345dm12315425n3d3ldmasdd3",
   },
 ];
 
@@ -29,6 +29,7 @@ const typeDefs = gql`
     YES
     NO
   }
+
   type Address {
     street: String!
     city: String!
@@ -43,7 +44,7 @@ const typeDefs = gql`
 
   type Query {
     personCount: Int!
-    allPersons(phhone: YesNo): [Person]!
+    allPersons(phone: YesNo): [Person]!
     findPerson(name: String!): Person
   }
 
@@ -60,7 +61,14 @@ const typeDefs = gql`
 const resolvers = {
   Query: {
     personCount: () => persons.length,
-    allPersons: () => persons,
+    allPersons: (root, args) => {
+      if (!args.phone) return persons;
+
+      const byPhone = (person) =>
+        args.phone === "YES" ? person.phone : !person.phone;
+
+      return persons.filter(byPhone);
+    },
     findPerson: (root, args) => {
       const { name } = args;
       return persons.find((person) => person.name === name);
@@ -69,7 +77,7 @@ const resolvers = {
   Mutation: {
     addPerson: (root, args) => {
       if (persons.find((p) => p.name === args.name)) {
-        throw new UserInputError('name must be unique', {
+        throw new UserInputError("name must be unique", {
           invalidArgs: args.name,
         });
       }
