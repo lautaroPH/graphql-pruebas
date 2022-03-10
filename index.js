@@ -1,97 +1,85 @@
-import { ApolloServer, gql, UserInputError } from "apollo-server";
-import { v1 } from "uuid";
-
-const persons = [
-  {
-    name: "jaja",
-    phone: "04343-43141",
-    street: "berisso",
-    city: "la plata",
-    id: "3dsadmn3d3ldmasdd3",
-  },
-  {
-    name: "sadas",
-    phone: "04312343-43141",
-    street: "sawd",
-    city: "bersso",
-    id: "3dsa123dmn3341d3ldmasasddd3",
-  },
-  {
-    name: "midu",
-    street: "dsbbbv",
-    city: "la sad",
-    id: "3dsa335345dm12315425n3d3ldmasdd3",
-  },
-];
+import { ApolloServer, gql } from 'apollo-server';
+import axios from 'axios';
 
 const typeDefs = gql`
-  enum YesNo {
-    YES
-    NO
-  }
-
-  type Address {
-    street: String!
-    city: String!
-  }
-
-  type Person {
+  type Character {
     name: String!
-    phone: String
-    address: Address!
+    status: String!
+    species: String!
+    image: String!
+    episode: [String]!
     id: ID!
   }
 
   type Query {
-    personCount: Int!
-    allPersons(phone: YesNo): [Person]!
-    findPerson(name: String!): Person
-  }
-
-  type Mutation {
-    addPerson(
-      name: String!
-      phone: String
-      street: String!
-      city: String!
-    ): Person
+    characterCount: Int!
+    hasNextPage(page: Int!): String
+    allCharacter(page: Int!): [Character]
+    findCharacter(name: String!): [Character]
+    characterById(id: ID!): Character
   }
 `;
 
+const getData = async (page = 0) => {
+  return await axios.get(
+    `https://rickandmortyapi.com/api/character?page=${page}`
+  );
+};
+
 const resolvers = {
   Query: {
-    personCount: () => persons.length,
-    allPersons: (root, args) => {
-      if (!args.phone) return persons;
+    characterCount: async () => {
+      const rickAndMortyData = await getData();
 
-      const byPhone = (person) =>
-        args.phone === "YES" ? person.phone : !person.phone;
+      return rickAndMortyData.data.info.count;
+    },
+    hasNextPage: async (root, args) => {
+      const { page } = args;
 
-      return persons.filter(byPhone);
-    },
-    findPerson: (root, args) => {
-      const { name } = args;
-      return persons.find((person) => person.name === name);
-    },
-  },
-  Mutation: {
-    addPerson: (root, args) => {
-      if (persons.find((p) => p.name === args.name)) {
-        throw new UserInputError("name must be unique", {
-          invalidArgs: args.name,
-        });
+      try {
+        const rickAndMortyData = await getData(page);
+        const nextPage = rickAndMortyData.data.info.next;
+
+        return nextPage;
+      } catch (error) {
+        return null;
       }
-      const person = { ...args, id: v1() };
-      persons.push(person);
-      return person;
     },
-  },
-  Person: {
-    address: (root) => {
-      return {
-        street: root.street,
-        city: root.city,
-      };
+    allCharacter: async (root, args) => {
+      const { page } = args;
+
+      try {
+        const rickAndMortyData = await getData(page);
+
+        const dataResults = rickAndMortyData.data.results;
+        const nextPage = rickAndMortyData.data.info.next;
+
+        return dataResults;
+      } catch (error) {
+        return null;
+      }
+    },
+    findCharacter: async (root, args) => {
+      const { name } = args;
+      try {
+        const rickAndMortyData = await axios.get(
+          `https://rickandmortyapi.com/api/character/?name=${name}`
+        );
+        return rickAndMortyData.data.results;
+      } catch (error) {
+        return null;
+      }
+    },
+    characterById: async (root, args) => {
+      const { id } = args;
+      try {
+        const rickAndMortyData = await axios.get(
+          `https://rickandmortyapi.com/api/character/${id}`
+        );
+        return rickAndMortyData.data;
+      } catch (error) {
+        return null;
+      }
     },
   },
 };
@@ -101,6 +89,4 @@ const server = new ApolloServer({
   resolvers,
 });
 
-server.listen().then(({ url }) => {
-  console.log(`server ready at ${url}`);
-});
+server.listen();
